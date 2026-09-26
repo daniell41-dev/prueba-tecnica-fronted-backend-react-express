@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+jobs:
+  backend:
+    name: Backend · Lint · Typecheck · Test · Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: contacts
+          POSTGRES_PASSWORD: contacts
+          POSTGRES_DB: contacts_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U contacts"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (unit + api)
+        run: pnpm test
+
+      - name: Test (integration, against Postgres real)
+        env:
+          DATABASE_URL: postgres://contacts:contacts@localhost:5432/contacts_test
+        run: pnpm test:integration
+
+      - name: Build
+        run: pnpm build
+
+      - name: Check file lengths (300 líneas)
+        working-directory: .
+        run: node scripts/check-file-length.mjs
+
+  frontend:
+    name: Frontend · Lint · Test · Build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  docker:
+    name: Docker · Build de las imágenes
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images (sin publicarlas)
+        env:
+          JWT_SECRET: ci-secret-nunca-usar-en-produccion-de-32-caracteres+
+        run: docker compose build
