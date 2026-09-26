@@ -1,0 +1,996 @@
+{
+  "info": {
+    "_postman_id": "b7e4c9a0-1234-4abc-9def-0123456789ab",
+    "name": "Contacts API (Node/Express)",
+    "description": "Colección para probar la API de contactos en Node/Express (docs/08-api-reference.md). Corre \"Auth → Login\" primero (guarda el token en la variable de entorno {{token}} — usa `pm.environment`, no `pm.collectionVariables`, porque en algunas versiones de Newman las collection variables no se resuelven a tiempo para el header de la request siguiente), luego \"Contactos\" de arriba hacia abajo. \"Casos de error\" se puede correr en cualquier momento. Las requests protegidas mandan Authorization: Bearer {{token}} explícito.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (guarda token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@example.com\",\n  \"password\": \"Demo1234!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('devuelve un token', () => pm.expect(body.token).to.be.a('string'));",
+                  "pm.environment.set('token', body.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con contraseña incorrecta (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@example.com\",\n  \"password\": \"incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me (usuario autenticado)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('trae el email', () => pm.expect(pm.response.json().user.email).to.eql('demo@example.com'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Contactos",
+      "item": [
+        {
+          "name": "Listar contactos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts?page=1&limit=10&sort=first_name&order=asc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts?page=1&limit=10&sort=first_name&order=asc"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('trae contacts y meta', () => { pm.expect(body.contacts).to.be.an('array'); pm.expect(body.meta).to.have.property('total'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar por favoritos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts?favorite=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts?favorite=true"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const { contacts } = pm.response.json();",
+                  "pm.test('todos son favoritos', () => contacts.forEach((c) => pm.expect(c.favorite).to.eql(true)));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar por texto (search)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts?search=nimbo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts?search=nimbo"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estadísticas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts",
+                "stats"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('trae total/favorites/top_companies', () => { pm.expect(body).to.have.property('total'); pm.expect(body).to.have.property('favorites'); pm.expect(body.top_companies).to.be.an('array'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear contacto (guarda contact_id)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Ada\",\n  \"last_name\": \"Lovelace\",\n  \"email\": \"ada.postman.{{$timestamp}}@example.com\",\n  \"company\": \"Analytical Engine\",\n  \"favorite\": true,\n  \"phones\": [\n    {\n      \"type\": \"mobile\",\n      \"number\": \"+52 55 1111 2222\"\n    },\n    {\n      \"type\": \"work\",\n      \"number\": \"5533334444\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('trae header Location', () => pm.expect(pm.response.headers.has('Location')).to.be.true);",
+                  "const body = pm.response.json();",
+                  "pm.test('el teléfono queda normalizado a 10 dígitos', () => pm.expect(body.contact.phones[0].number).to.eql('5511112222'));",
+                  "pm.environment.set('contact_id', body.contact.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener contacto",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/{{contact_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts",
+                "{{contact_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('es el contacto creado', () => pm.expect(pm.response.json().contact.id).to.eql(pm.environment.get('contact_id')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar favorito (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/{{contact_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts",
+                "{{contact_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"favorite\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('favorite quedó en false, no en el valor anterior', () => pm.expect(pm.response.json().contact.favorite).to.eql(false));",
+                  "pm.test('el resto de los campos no cambió', () => pm.expect(pm.response.json().contact.first_name).to.eql('Ada'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reemplazar contacto (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/{{contact_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts",
+                "{{contact_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Ada\",\n  \"last_name\": \"Lovelace\",\n  \"email\": \"ada.postman.put.{{$timestamp}}@example.com\",\n  \"company\": \"Analytical Engine\",\n  \"favorite\": true,\n  \"phones\": [\n    {\n      \"type\": \"home\",\n      \"number\": \"5599998888\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('los teléfonos se reemplazaron por completo', () => { const phones = pm.response.json().contact.phones; pm.expect(phones).to.have.lengthOf(1); pm.expect(phones[0].number).to.eql('5599998888'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Importar contactos externos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/import",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts",
+                "import"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"count\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200, 502 o 504 (depende de si randomuser.me es alcanzable)', () => pm.expect([200, 502, 504]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar contacto",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/{{contact_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts",
+                "{{contact_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 sin cuerpo', () => { pm.response.to.have.status(204); pm.expect(pm.response.text()).to.have.lengthOf(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Casos de error",
+      "item": [
+        {
+          "name": "422 — campos vacíos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"\",\n  \"last_name\": \"\",\n  \"email\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "const { errors } = pm.response.json();",
+                  "pm.test('trae errores por campo', () => { pm.expect(errors).to.have.property('first_name'); pm.expect(errors).to.have.property('last_name'); pm.expect(errors).to.have.property('email'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — teléfono inválido (letras)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Ada\",\n  \"last_name\": \"Lovelace\",\n  \"email\": \"phones.invalidos@example.com\",\n  \"phones\": [\n    {\n      \"type\": \"mobile\",\n      \"number\": \"+52 abc55 1234 5678\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('el error está en phones.0.number', () => pm.expect(pm.response.json().errors).to.have.property('phones.0.number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — teléfonos duplicados",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Ada\",\n  \"last_name\": \"Lovelace\",\n  \"email\": \"phones.duplicados@example.com\",\n  \"phones\": [\n    {\n      \"number\": \"5511112222\"\n    },\n    {\n      \"number\": \"55 1111 2222\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 — JSON malformado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"first_name\": \"Ada\", esto no es json",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 — sin token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Ada\",\n  \"last_name\": \"Lovelace\",\n  \"email\": \"sin.token@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 — token inválido",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer token-que-no-es-valido"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 — contacto no existe",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/6f9619ff-8b86-d011-b42d-00cf4fc964ff",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts",
+                "6f9619ff-8b86-d011-b42d-00cf4fc964ff"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 — id sin forma de UUID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts/no-es-un-uuid",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts",
+                "no-es-un-uuid"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found (no 500)', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 — ruta inexistente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/no-existe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "no-existe"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 — email duplicado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/contacts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "contacts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Otra\",\n  \"last_name\": \"Persona\",\n  \"email\": \"maria.gonzalez@atlantis.mx\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
