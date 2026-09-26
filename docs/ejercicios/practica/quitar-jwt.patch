@@ -1,0 +1,169 @@
+diff --git a/backend/src/middlewares/require-auth.ts b/backend/src/middlewares/require-auth.ts
+deleted file mode 100644
+index e150919..0000000
+--- a/backend/src/middlewares/require-auth.ts
++++ /dev/null
+@@ -1,40 +0,0 @@
+-import type { NextFunction, Request, Response } from 'express';
+-import jwt from 'jsonwebtoken';
+-import { env } from '../config/env.js';
+-import { UnauthorizedError } from '../errors/app-error.js';
+-
+-interface AccessTokenPayload {
+-  sub: string;
+-  email: string;
+-}
+-
+-function isAccessTokenPayload(value: unknown): value is AccessTokenPayload {
+-  return typeof value === 'object' && value !== null && 'sub' in value && 'email' in value;
+-}
+-
+-/**
+- * Protege una ruta exigiendo `Authorization: Bearer <token>`. Usa
+- * `jwt.verify` (nunca `jwt.decode`, que no comprueba la firma ni la
+- * expiración) y deja al usuario en `req.user` para que el controller lo lea.
+- */
+-export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
+-  const header = req.headers.authorization;
+-
+-  if (!header?.startsWith('Bearer ')) {
+-    next(new UnauthorizedError('Falta el token de autenticación.'));
+-    return;
+-  }
+-
+-  const token = header.slice('Bearer '.length);
+-
+-  try {
+-    const payload = jwt.verify(token, env.JWT_SECRET);
+-    if (!isAccessTokenPayload(payload)) {
+-      throw new Error('Payload de token con forma inesperada.');
+-    }
+-    req.user = { id: payload.sub, email: payload.email };
+-    next();
+-  } catch {
+-    next(new UnauthorizedError('Token inválido o expirado.'));
+-  }
+-}
+diff --git a/backend/src/routes/auth.routes.ts b/backend/src/routes/auth.routes.ts
+index 9144f15..c26fe52 100644
+--- a/backend/src/routes/auth.routes.ts
++++ b/backend/src/routes/auth.routes.ts
+@@ -1,6 +1,5 @@
+ import { Router } from 'express';
+ import type { AuthController } from '../controllers/auth.controller.js';
+-import { requireAuth } from '../middlewares/require-auth.js';
+ import { validateBody } from '../middlewares/validate-body.js';
+ import { loginSchema } from '../schemas/auth.schema.js';
+ 
+@@ -8,7 +7,7 @@ export function authRoutes(controller: AuthController): Router {
+   const router = Router();
+ 
+   router.post('/login', validateBody(loginSchema), controller.login);
+-  router.get('/me', requireAuth, controller.me);
++  router.get('/me', controller.me);
+ 
+   return router;
+ }
+diff --git a/backend/src/routes/contacts.routes.ts b/backend/src/routes/contacts.routes.ts
+index 772d6a4..f56c5f1 100644
+--- a/backend/src/routes/contacts.routes.ts
++++ b/backend/src/routes/contacts.routes.ts
+@@ -1,14 +1,12 @@
+ import { Router } from 'express';
+ import type { ContactsController } from '../controllers/contacts.controller.js';
+-import { requireAuth } from '../middlewares/require-auth.js';
+ import { validateBody } from '../middlewares/validate-body.js';
+ import { createContactSchema, patchContactSchema, replaceContactSchema } from '../schemas/contact.schema.js';
+ import { importContactsSchema } from '../schemas/import-contacts.schema.js';
+ 
+ /**
+- * Mapa ruta → controller — equivalente de `routes/api.php`. Las lecturas son
+- * públicas; las escrituras exigen `requireAuth`. Se registra montado bajo
+- * `/contacts` desde `routes/index.ts`.
++ * Mapa ruta → controller — equivalente de `routes/api.php`. Se registra
++ * montado bajo `/contacts` desde `routes/index.ts`.
+  */
+ export function contactsRoutes(controller: ContactsController): Router {
+   const router = Router();
+@@ -17,11 +15,11 @@ export function contactsRoutes(controller: ContactsController): Router {
+   router.get('/', controller.index);
+   router.get('/:id', controller.show);
+ 
+-  router.post('/', requireAuth, validateBody(createContactSchema), controller.store);
+-  router.post('/import', requireAuth, validateBody(importContactsSchema), controller.import);
+-  router.put('/:id', requireAuth, validateBody(replaceContactSchema), controller.replace);
+-  router.patch('/:id', requireAuth, validateBody(patchContactSchema), controller.patch);
+-  router.delete('/:id', requireAuth, controller.destroy);
++  router.post('/', validateBody(createContactSchema), controller.store);
++  router.post('/import', validateBody(importContactsSchema), controller.import);
++  router.put('/:id', validateBody(replaceContactSchema), controller.replace);
++  router.patch('/:id', validateBody(patchContactSchema), controller.patch);
++  router.delete('/:id', controller.destroy);
+ 
+   return router;
+ }
+diff --git a/backend/tests/unit/require-auth.test.ts b/backend/tests/unit/require-auth.test.ts
+deleted file mode 100644
+index 134f8a6..0000000
+--- a/backend/tests/unit/require-auth.test.ts
++++ /dev/null
+@@ -1,59 +0,0 @@
+-import type { Request, Response } from 'express';
+-import jwt from 'jsonwebtoken';
+-import { describe, expect, it, vi } from 'vitest';
+-import { env } from '../../src/config/env.js';
+-import { UnauthorizedError } from '../../src/errors/app-error.js';
+-import { requireAuth } from '../../src/middlewares/require-auth.js';
+-
+-function buildRequest(authorizationHeader?: string): Request {
+-  return { headers: { authorization: authorizationHeader } } as unknown as Request;
+-}
+-
+-describe('requireAuth', () => {
+-  it('con un token válido, rellena req.user y llama next() sin argumentos', () => {
+-    const token = jwt.sign({ sub: 'user-1', email: 'demo@example.com' }, env.JWT_SECRET);
+-    const req = buildRequest(`Bearer ${token}`);
+-    const next = vi.fn();
+-
+-    requireAuth(req, {} as Response, next);
+-
+-    expect(next).toHaveBeenCalledWith();
+-    expect(req.user).toEqual({ id: 'user-1', email: 'demo@example.com' });
+-  });
+-
+-  it('sin header Authorization, llama next(UnauthorizedError)', () => {
+-    const next = vi.fn();
+-    requireAuth(buildRequest(undefined), {} as Response, next);
+-    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+-  });
+-
+-  it('con un header que no empieza con "Bearer ", llama next(UnauthorizedError)', () => {
+-    const next = vi.fn();
+-    requireAuth(buildRequest('Token abc123'), {} as Response, next);
+-    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+-  });
+-
+-  it('con un token que no es un JWT válido, llama next(UnauthorizedError)', () => {
+-    const next = vi.fn();
+-    requireAuth(buildRequest('Bearer no-es-un-jwt'), {} as Response, next);
+-    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+-  });
+-
+-  it('con un token expirado, llama next(UnauthorizedError) — usa jwt.verify, nunca jwt.decode', () => {
+-    const expiredToken = jwt.sign({ sub: 'user-1', email: 'demo@example.com' }, env.JWT_SECRET, { expiresIn: -10 });
+-    const next = vi.fn();
+-
+-    requireAuth(buildRequest(`Bearer ${expiredToken}`), {} as Response, next);
+-
+-    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+-  });
+-
+-  it('con un token firmado con otro secreto, llama next(UnauthorizedError)', () => {
+-    const token = jwt.sign({ sub: 'user-1', email: 'demo@example.com' }, 'otro-secreto-cualquiera-de-32-caracteres+');
+-    const next = vi.fn();
+-
+-    requireAuth(buildRequest(`Bearer ${token}`), {} as Response, next);
+-
+-    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+-  });
+-});

@@ -1,0 +1,37 @@
+diff --git a/backend/src/repositories/pg-contact.repository.ts b/backend/src/repositories/pg-contact.repository.ts
+index 86b06a2..c1638a3 100644
+--- a/backend/src/repositories/pg-contact.repository.ts
++++ b/backend/src/repositories/pg-contact.repository.ts
+@@ -24,7 +24,7 @@ export class PgContactRepository implements ContactRepository {
+     const { whereSql, params } = this.buildWhere(filters);
+     const column = SORT_COLUMNS[sort.sort];
+     const direction = sort.order === 'desc' ? 'DESC' : 'ASC';
+-    const offset = (pagination.page - 1) * pagination.limit;
++    const offset = pagination.page * pagination.limit;
+ 
+     const sql = `
+       SELECT * FROM contacts
+diff --git a/backend/tests/integration/pg-contact.repository.test.ts b/backend/tests/integration/pg-contact.repository.test.ts
+index 1049348..53ed426 100644
+--- a/backend/tests/integration/pg-contact.repository.test.ts
++++ b/backend/tests/integration/pg-contact.repository.test.ts
+@@ -133,19 +133,6 @@ describe('PgContactRepository (Postgres real)', () => {
+     expect(all.map((contact) => contact.firstName)).toEqual(['Ana', 'Beto']);
+   });
+ 
+-  it('findMany pagina correctamente (page 2 no repite ni salta filas)', async () => {
+-    await repository.create(createNewContact({ firstName: 'Ana', lastName: 'A', email: 'ana@example.com', company: null, favorite: false, phones: [] }));
+-    await repository.create(createNewContact({ firstName: 'Beto', lastName: 'B', email: 'beto@example.com', company: null, favorite: false, phones: [] }));
+-    await repository.create(createNewContact({ firstName: 'Carla', lastName: 'C', email: 'carla@example.com', company: null, favorite: false, phones: [] }));
+-
+-    const sort = { sort: 'first_name' as const, order: 'asc' as const };
+-    const firstPage = await repository.findMany({}, sort, { page: 1, limit: 2 });
+-    const secondPage = await repository.findMany({}, sort, { page: 2, limit: 2 });
+-
+-    expect(firstPage.map((contact) => contact.firstName)).toEqual(['Ana', 'Beto']);
+-    expect(secondPage.map((contact) => contact.firstName)).toEqual(['Carla']);
+-  });
+-
+   it('countTotal/countFavorites/topCompanies agregan correctamente', async () => {
+     await repository.create(createNewContact({ firstName: 'Beto', lastName: 'Ruiz', email: 'beto@example.com', company: 'Acme', favorite: true, phones: [] }));
+     await repository.create(createNewContact({ firstName: 'Ana', lastName: 'Gómez', email: 'ana@example.com', company: 'Acme', favorite: false, phones: [] }));

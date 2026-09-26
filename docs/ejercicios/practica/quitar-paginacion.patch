@@ -1,0 +1,33 @@
+diff --git a/backend/src/controllers/contacts.controller.ts b/backend/src/controllers/contacts.controller.ts
+index 8317284..1c19f7b 100644
+--- a/backend/src/controllers/contacts.controller.ts
++++ b/backend/src/controllers/contacts.controller.ts
+@@ -4,7 +4,6 @@ import { toContactDto } from '../domain/contact.js';
+ import { NotFoundError } from '../errors/app-error.js';
+ import type { CreateContactBody, PatchContactBody } from '../schemas/contact.schema.js';
+ import type { ImportContactsBody } from '../schemas/import-contacts.schema.js';
+-import { listContactsQuerySchema } from '../schemas/list-contacts-query.schema.js';
+ import type { ContactImportService } from '../services/contact-import.service.js';
+ import type { ContactsService } from '../services/contacts.service.js';
+ import { isUuid } from '../utils/uuid.js';
+@@ -46,11 +45,15 @@ export class ContactsController {
+     private readonly importService: ContactImportService,
+   ) {}
+ 
+-  index = async (req: Request, res: Response): Promise<void> => {
+-    // Query params: se parsean aquí, no con `validateBody` — `req.query` es
+-    // un getter en Express 5 y no se puede reasignar como `req.body`.
+-    const query = listContactsQuerySchema.parse(req.query);
+-    const { contacts, meta } = await this.service.list(query);
++  index = async (_req: Request, res: Response): Promise<void> => {
++    const { contacts, meta } = await this.service.list({
++      page: 1,
++      limit: 1000,
++      sort: 'first_name',
++      order: 'asc',
++      search: undefined,
++      favorite: undefined,
++    });
+     res.json({ contacts: contacts.map(toContactDto), meta });
+   };
+ 
