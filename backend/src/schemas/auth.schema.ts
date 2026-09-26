@@ -1,0 +1,8 @@
+import { z } from 'zod';
+
+export const loginSchema = z.object({
+  email: z.string().trim().min(1, 'Este campo es obligatorio.').toLowerCase().email('Debe ser un correo electrónico válido.'),
+  password: z.string().min(1, 'Este campo es obligatorio.'),
+});
+
+export type LoginBody = z.infer<typeof loginSchema>;
