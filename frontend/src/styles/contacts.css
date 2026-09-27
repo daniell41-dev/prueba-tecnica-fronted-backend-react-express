@@ -1,0 +1,138 @@
+.contacts-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.search-bar {
+  flex: 1 1 220px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.favorite-filter,
+.sort-select select {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.sort-select {
+  display: flex;
+  gap: 4px;
+}
+
+.sort-select__direction {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.contacts-toolbar button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.contacts-toolbar__create {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.contact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contact-row {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.contact-row__info {
+  flex: 1;
+}
+
+.contact-row__name {
+  font-weight: 600;
+  margin: 0;
+}
+
+.contact-row__email,
+.contact-row__company {
+  margin: 2px 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.contact-row__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.contact-row__actions button {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.favorite-toggle {
+  border: none;
+  background: none;
+  font-size: 1.4rem;
+  color: var(--color-favorite);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.phone-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.phone-list__type {
+  font-weight: 600;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.pagination button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .contact-row {
+    flex-wrap: wrap;
+  }
+}

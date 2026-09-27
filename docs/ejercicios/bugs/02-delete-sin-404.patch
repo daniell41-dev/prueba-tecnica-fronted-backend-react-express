@@ -1,0 +1,46 @@
+diff --git a/backend/src/services/contacts.service.ts b/backend/src/services/contacts.service.ts
+index c9e0d86..b8fd905 100644
+--- a/backend/src/services/contacts.service.ts
++++ b/backend/src/services/contacts.service.ts
+@@ -69,10 +69,7 @@ export class ContactsService {
+   }
+ 
+   async remove(id: string): Promise<void> {
+-    const deleted = await this.repository.delete(id);
+-    if (!deleted) {
+-      this.throwNotFound(id);
+-    }
++    await this.repository.delete(id);
+   }
+ 
+   /** Tres queries de agregación independientes: se disparan a la vez con `Promise.all`. */
+diff --git a/backend/tests/api/contacts.delete.api.test.ts b/backend/tests/api/contacts.delete.api.test.ts
+index 4e82b82..14e3c51 100644
+--- a/backend/tests/api/contacts.delete.api.test.ts
++++ b/backend/tests/api/contacts.delete.api.test.ts
+@@ -28,10 +28,4 @@ describe('DELETE /api/contacts/:id', () => {
+     const afterDelete = await request(app).get(`/api/contacts/${created.body.contact.id}`);
+     expect(afterDelete.status).toBe(404);
+   });
+-
+-  it('responde 404 si el contacto no existe', async () => {
+-    const { app, authToken } = await buildTestApp();
+-    const response = await request(app).delete(`/api/contacts/${MISSING_ID}`).set('Authorization', `Bearer ${authToken}`);
+-    expect(response.status).toBe(404);
+-  });
+ });
+diff --git a/backend/tests/unit/contacts.service.test.ts b/backend/tests/unit/contacts.service.test.ts
+index 6fb0cb5..ad3b381 100644
+--- a/backend/tests/unit/contacts.service.test.ts
++++ b/backend/tests/unit/contacts.service.test.ts
+@@ -84,10 +84,6 @@ describe('ContactsService', () => {
+     expect(patched.firstName).toBe('Ada');
+   });
+ 
+-  it('remove lanza NotFoundError si el id no existe', async () => {
+-    await expect(service.remove('no-existe')).rejects.toBeInstanceOf(NotFoundError);
+-  });
+-
+   it('stats agrega total, favoritos y top empresas con Promise.all', async () => {
+     await service.create(buildInput({ email: 'a@example.com', favorite: true, company: 'Acme' }));
+     await service.create(buildInput({ email: 'b@example.com', favorite: false, company: 'Acme' }));

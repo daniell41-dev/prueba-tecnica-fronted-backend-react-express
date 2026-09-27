@@ -1,0 +1,75 @@
+# Levanta el stack completo: PostgreSQL + API (Express) + frontend (React
+# servido por nginx). Ver docs/07-docker-desktop.md para el paso a paso y el
+# diagrama de cómo se conecta todo.
+#
+#   cp .env.example .env
+#   docker compose up --build
+#
+name: contacts-app
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: contacts-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-contacts}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contacts}
+      POSTGRES_DB: ${POSTGRES_DB:-contacts}
+    ports:
+      # Puerto publicado al host — así DBeaver se conecta a localhost:5432.
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-contacts}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - contacts-net
+
+  api:
+    build:
+      context: ./backend
+    container_name: contacts-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # "db" es el nombre del servicio de arriba — DNS interno de Docker, no una IP.
+      DATABASE_URL: postgres://${POSTGRES_USER:-contacts}:${POSTGRES_PASSWORD:-contacts}@db:5432/${POSTGRES_DB:-contacts}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:8080}
+      RANDOM_USER_API_URL: ${RANDOM_USER_API_URL:-https://randomuser.me/api/}
+      RANDOM_USER_TIMEOUT_MS: ${RANDOM_USER_TIMEOUT_MS:-5000}
+      APP_DEBUG: ${APP_DEBUG:-false}
+    ports:
+      # Publicado también al host — así Postman le habla directo, sin pasar por nginx.
+      - '3000:3000'
+    networks:
+      - contacts-net
+
+  web:
+    build:
+      context: ./frontend
+    container_name: contacts-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '8080:80'
+    networks:
+      - contacts-net
+
+volumes:
+  pgdata:
+
+networks:
+  contacts-net:
+    name: contacts-net

@@ -1,0 +1,23 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router';
+import { App } from './App.js';
+import { AuthProvider } from './context/AuthProvider.js';
+import './styles/base.css';
+import './styles/forms.css';
+import './styles/contacts.css';
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('No se encontró el elemento #root.');
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
+  </StrictMode>,
+);

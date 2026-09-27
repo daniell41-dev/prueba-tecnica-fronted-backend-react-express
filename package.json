@@ -1,0 +1,20 @@
+{
+  "name": "contacts-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Agenda de contactos full-stack: React + Express + PostgreSQL + Docker (prueba técnica / práctica de live coding).",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "check:lengths": "node scripts/check-file-length.mjs",
+    "backend": "pnpm --dir backend",
+    "frontend": "pnpm --dir frontend",
+    "dev:backend": "pnpm --dir backend dev",
+    "dev:frontend": "pnpm --dir frontend dev",
+    "lint": "pnpm --dir backend lint && pnpm --dir frontend lint && pnpm check:lengths",
+    "test": "pnpm --dir backend test && pnpm --dir frontend test",
+    "build": "pnpm --dir backend build && pnpm --dir frontend build",
+    "db:up": "docker compose up -d db",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  }
+}
