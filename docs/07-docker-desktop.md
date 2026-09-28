@@ -39,6 +39,11 @@ lee primero la sección 1; si ya sabes qué es un contenedor, salta a la 3.
    cp .env.example .env      # ajusta JWT_SECRET si quieres uno propio
    docker compose up --build
    ```
+   `JWT_SECRET` es un valor que **inventas tú** (no se obtiene de ningún
+   servicio): una cadena aleatoria con la que la API firma los tokens de
+   login. Debe tener **al menos 32 caracteres** (lo valida
+   `backend/src/config/env.ts`). Para generar uno:
+   `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
 3. La primera vez tarda un par de minutos (descarga las imágenes base de
    Node/Postgres/nginx e instala dependencias). Vas a ver los logs de los
    tres contenedores entrelazados en la misma terminal.
@@ -225,4 +230,8 @@ proxy.
 | `ECONNREFUSED` / "connection refused" en los logs de `api` | `DATABASE_URL` apunta a `localhost` en vez de `db` | Dentro de Docker, el host de Postgres es el nombre del servicio (`db`), nunca `localhost` — `localhost` dentro de un contenedor es *ese mismo contenedor* |
 | Cambios en el código no aparecen tras `docker compose up` | Estás editando el código pero no reconstruiste la imagen | `docker compose up --build`, o usa el modo desarrollo (Opción B del README) si vas a iterar seguido |
 | `web` (nginx) devuelve 404 en rutas como `/contacts/5` al refrescar | Falta el SPA fallback | Ya está resuelto en `nginx.conf` (`try_files $uri /index.html`) — si lo ves, revisa que no se haya sobrescrito ese archivo |
+| `JWT_SECRET debe tener al menos 32 caracteres` en los logs de `api` | El `JWT_SECRET` de tu `.env` es demasiado corto | Pon uno de 32+ caracteres (ver sección 2) y vuelve a correr `docker compose up --build` |
+| `node: .env: not found` al correr `pnpm --dir backend dev` | Falta `backend/.env` (el modo desarrollo no usa el `.env` de la raíz), o se llama distinto (`.env.local`) | `cp backend/.env.example backend/.env` — el nombre debe ser exactamente `.env` |
+| `relation "users" does not exist` al hacer login en modo desarrollo | La base está vacía: en modo desarrollo nadie corre las migraciones por ti | `pnpm --dir backend db:migrate -- --seed` |
+| DBeaver no muestra las tablas `contacts`/`users`, pero la app sí tiene datos | DBeaver está conectado a otra base (`postgres` o `contacts_test`) o el árbol no está refrescado | Abre la base **`contacts`** → `public` → Tables (marca *Show all databases* en la conexión) y pulsa F5 |
 | Quiero empezar de cero, con datos limpios | El volumen `pgdata` conserva los datos entre reinicios (a propósito) | `docker compose down -v` borra también el volumen — la próxima vez que arranque, siembra los 8 contactos de ejemplo desde cero |

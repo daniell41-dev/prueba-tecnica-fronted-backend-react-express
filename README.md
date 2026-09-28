@@ -60,9 +60,14 @@ punto a pulir — empieza por
 ### Opción A — Todo en Docker (recomendado para probar rápido)
 
 ```bash
-cp .env.example .env          # ajusta JWT_SECRET si quieres
+cp .env.example .env          # ajusta JWT_SECRET si quieres (mínimo 32 caracteres)
 docker compose up --build
 ```
+
+> En Windows PowerShell usa `Copy-Item .env.example .env` en vez de `cp`.
+> Si cambias `JWT_SECRET`, debe tener **al menos 32 caracteres** o la API no
+> arranca. Genera uno con
+> `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
 
 - Frontend: <http://localhost:8080>
 - API: <http://localhost:3000/api>
@@ -85,6 +90,26 @@ pnpm --dir backend db:migrate -- --fresh --seed
 pnpm --dir backend dev          # http://localhost:3000
 pnpm --dir frontend dev         # http://localhost:5173 (proxy /api → :3000)
 ```
+
+Antes de lanzarlo, ten en cuenta:
+
+- **El backend lee su propio `backend/.env`**, no el `.env` de la raíz
+  (`tsx watch --env-file=.env` se ejecuta dentro de `backend/`). Créalo a
+  partir de la plantilla — el nombre tiene que ser exactamente `.env`
+  (Node no lee `.env.local` ni otras variantes):
+  ```bash
+  cp backend/.env.example backend/.env
+  ```
+  Ahí `DATABASE_URL` apunta a `localhost:5432`, no a `db:5432`, porque el
+  backend corre fuera de Docker. El frontend no necesita `.env`.
+- **Las migraciones las corres tú.** En la Opción A las ejecuta el
+  contenedor `api` al arrancar; aquí `docker compose up -d db` solo levanta
+  Postgres. Si te saltas `db:migrate`, el login falla con
+  `relation "users" does not exist`.
+- **Detén los contenedores `api` y `web`** si vienes de la Opción A: `api`
+  ocupa el puerto `3000` y el backend en desarrollo no podrá arrancar.
+- Backend y frontend van en **terminales separadas**, porque ambos se
+  quedan corriendo.
 
 ## Credenciales de prueba
 
